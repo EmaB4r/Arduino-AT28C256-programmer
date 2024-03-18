@@ -10,6 +10,8 @@ If on Linux (Ubuntu in my case) and using a clone arduino with a CH34x interface
 `systemctl disable brltty.service`  
 They stop your OS from seeing the arduino nano as a braille e-reader  
 
+## Next updates will add the pagewrite to speed up writing, dumping the rom content to a .bin and add arguments support
+
 # Python code:
 `pyserial` needs to be installed by running `pip install pyserial` on your terminal.  
 The code's able to automatically detect the arduino-programmer, send data to it for writing and receive for reading.  
