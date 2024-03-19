@@ -61,16 +61,16 @@ def get_file_name():
     return file_name
 
 #function that sends a whole .bin file through serial communication
-def send_file_via_serial(file, serial_port, start_address):
-    line_cnt=0
+def send_file_via_serial(file, serial_port):
     address_cnt=0
-    sent_bytes=0
     while byte:=file.read(32):
         print(hex(address_cnt))
         serial_port.write(byte) #sends the data
         serial_port.flush()
         serial_port.read() # waits for the arduino
         address_cnt+=32
+    print("\nDONE WRITING")
+    delay_a_bit(2)
             
 
 
@@ -102,15 +102,12 @@ def main():
                 print(msg)
                 exit(2)
 
-            print("set start address (int): ")
-            start_address = int(input())
-
             a=49 #have to convert it to byte or it won't work, this value is needed to pair the mode with the arduino
             serial_port.write(a.to_bytes(1, byteorder="big"))
             serial_port.flush()
 
             # sends the whole file
-            send_file_via_serial(file, serial_port, start_address)
+            send_file_via_serial(file, serial_port)
             file.close()
         
         if readWrite=='R' or readWrite=='r':

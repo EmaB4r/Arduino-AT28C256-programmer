@@ -14,16 +14,17 @@ int Data_Pins_mode=2;
 
 
 byte flipByte(byte c){
+  //takes a byte and flips it 
+  //ex.  11010001 --> 10001011
   c = ((c>>1)&0x55)|((c<<1)&0xAA);
   c = ((c>>2)&0x33)|((c<<2)&0xCC);
   c = (c>>4) | (c<<4) ;
-
   return c;
 }
 
 
 void my_shiftOut(byte Data){
-  Data=flipByte(Data);
+  Data=flipByte(Data);//flips the byte to send most significant bit first
   for(int i=0; i<8; i++){
     PORTB = PORTB | ((Data&1)<<2); //set sr data pin
     PORTB = PORTB | B00001000; //set clock pin high
@@ -58,22 +59,26 @@ void set_address_from_byte(byte HighByte, byte LowByte){
 
 //sets all the board data pins given a byte and writes to the eeprom
 void write_EEPROM(byte DataByte){
-  digitalWrite(OUTPUT_ENABLEB, HIGH);
-  set_data_pins_IO(OUTPUT);
   DataByte=flipByte(DataByte);
-  PORTB=PORTB | DataByte/64;
-  PORTD=PORTD | (DataByte%64)<<2;
-  digitalWrite(WRITE_ENABLEB, LOW);
+
+  //PORTB = pins X X X 12 11 10 9 8 ;
+  PORTB=PORTB | DataByte/64; // if byte is 10111111 puts 1 in 9 and 0 in 8
+  
+  //PORTD = pins 7 6 5 4 3 2 1 0;
+  PORTD=PORTD | (DataByte%64)<<2; // takes the 6 lower bits and puts them from 7 to 2, from msb to lsb
+
+  digitalWrite(WRITE_ENABLEB, LOW);//short enable pulse
   digitalWrite(WRITE_ENABLEB, HIGH);
-  delayMicroseconds(50);
+
+  delayMicroseconds(50); //small delay to let the eeprom save the byte
+
+  //sets pins from 9 to 2 to 0
   PORTB=PORTB & B11111100;
   PORTD=PORTD & B00000011;
 }
 
 //reads from the datapins and returns the byte red
 byte read_EEPROM(){
-  digitalWrite(OUTPUT_ENABLEB, LOW);
-  set_data_pins_IO(INPUT);
   byte Data_byte=0;
   for(int i=7; i>=0; i--){
     Data_byte= (Data_byte<<1) + digitalRead(Data_Pins[i]);
@@ -84,12 +89,13 @@ byte read_EEPROM(){
 //sets it's working mode to read or write
 void start_execution(int mode){
   int high=0, low=0, stop=0;
-  byte DataB[64];
   unsigned long time_check=millis();
 
 
   switch (mode){
   case 48://read
+    digitalWrite(OUTPUT_ENABLEB, LOW);
+    set_data_pins_IO(INPUT);
     while (high<128){
       //for reading it increments the address and sends the byte stored to python
       set_address_from_byte(high, low);
@@ -104,9 +110,10 @@ void start_execution(int mode){
   case 49://write
     digitalWrite(OUTPUT_ENABLEB, HIGH);
     set_data_pins_IO(OUTPUT);
+
     while(!stop){
       if(Serial.available()>=32){
-        //reads an address and a byte from python and proceeds to write on the eeprom
+        //reads an address and a byte from python and proceeds to write it on the eeprom
         time_check=millis();
         for(int i=0; i<32; i++){
           set_address_from_byte(high, low);
@@ -117,14 +124,14 @@ void start_execution(int mode){
             low=0;
           }
         }
-        delay(5);
+        delay(6);
 
         //to not lose data due to python beeing too fast, python halts until arduino sends one byte over serial
         //can be every value
-        Serial.write((int)DataB[0]);
+        Serial.write(0);
         
       } 
-      else if (millis()-time_check > 4000){
+      else if (millis()-time_check > 2000){
         stop=1;
       }
     }
